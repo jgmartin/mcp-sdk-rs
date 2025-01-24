@@ -16,16 +16,24 @@
 //!
 //! ```no_run
 //! use std::sync::Arc;
-//! use mcp_rust_sdk::client::Client;
-//! use mcp_rust_sdk::transport::websocket::WebSocketTransport;
+//! use mcp_sdk_rs::client::{Client, Session};
+//! use mcp_sdk_rs::transport::websocket::WebSocketTransport;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Create a WebSocket transport
-//!     let transport = WebSocketTransport::new("ws://localhost:8080").await?;
+//!     // Create WebSocket transport
+//!     let transport = WebSocketTransport::new("ws://127.0.0.1:8780").await?;
 //!
-//!     // Create the client with Arc-wrapped transport
-//!     let client = Client::new(Arc::new(transport));
+//!     // Create client communication channel
+//!     let (request_tx, response_rx) = tokio::sync::mpsc::unbounded_channel();
+//!     let (response_tx, request_rx) = tokio::sync::mpsc::unbounded_channel();
+//!
+//!     // Create a session and start listening for requests and notifications
+//!     let session = Session::new(Arc::new(transport), response_tx, request_rx, None);
+//!     session.start().await?;
+//!
+//!     // Create MCP client
+//!     let client = Client::new(request_tx, response_rx);
 //!
 //!     // Use the client...
 //!

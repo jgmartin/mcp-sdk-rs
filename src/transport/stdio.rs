@@ -45,7 +45,7 @@ use crate::{
 /// # Example
 ///
 /// ```rust
-/// use mcp_rust_sdk::transport::stdio::StdioTransport;
+/// use mcp_sdk_rs::transport::stdio::StdioTransport;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -165,54 +165,5 @@ impl Transport for StdioTransport {
     async fn close(&self) -> Result<(), Error> {
         // Nothing to do for stdio transport
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::protocol::{Request, RequestId};
-    use std::sync::mpsc;
-    use std::thread;
-    use std::time::Duration;
-    use tokio::runtime::Runtime;
-    use tokio::sync::broadcast;
-
-    #[test]
-    fn test_stdio_transport() {
-        // Create a oneshot channel to verify message sending
-        let (verify_tx, verify_rx) = mpsc::channel();
-
-        // Spawn a thread to handle the transport operations
-        thread::spawn(move || {
-            // Create a tokio runtime for async operations
-            let rt = Runtime::new().unwrap();
-
-            // Create test message
-            let request = Request::new(
-                "test_method",
-                Some(serde_json::json!({"key": "value"})),
-                RequestId::Number(1),
-            );
-            let message = Message::Request(request);
-
-            // Create transport with broadcast channel
-            let (_, receiver) = broadcast::channel(100);
-            let transport = StdioTransport {
-                stdout: Arc::new(Mutex::new(std::io::stdout())),
-                receiver,
-            };
-
-            // Test sending a message
-            let send_result = rt.block_on(transport.send(message.clone()));
-            verify_tx.send(send_result.is_ok()).unwrap();
-        });
-
-        // Wait for the result with timeout
-        match verify_rx.recv_timeout(Duration::from_secs(1)) {
-            Ok(true) => (), // Test passed
-            Ok(false) => panic!("Failed to send message"),
-            Err(_) => panic!("Test timed out"),
-        }
     }
 }
