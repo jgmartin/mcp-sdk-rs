@@ -66,6 +66,23 @@ pub struct Resource {
     pub size: Option<String>,
 }
 
+/// A resource template
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceTemplate {
+    /// Unique identifier for the resource
+    #[serde(rename = "uriTemplate")]
+    pub uri_template: String,
+    /// Human-readable name
+    pub name: String,
+    /// Optional description
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// The MIME type of this resource, if known
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "mimeType")]
+    pub mime_type: Option<String>,
+}
+
 /// Model preferences for completion requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelPreferences {
