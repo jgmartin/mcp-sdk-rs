@@ -19,7 +19,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-mcp_rust_sdk = "0.1.0"
+mcp_sdk_rs = "0.1.0"
 ```
 
 ## Quick Start
@@ -27,7 +27,7 @@ mcp_rust_sdk = "0.1.0"
 ### Client Example
 
 ```rust
-use mcp_rust_sdk::{Client, transport::WebSocketTransport};
+use mcp_sdk_rs::{Client, transport::WebSocketTransport};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Server Example
 
 ```rust
-use mcp_rust_sdk::{Server, transport::StdioTransport};
+use mcp_sdk_rs::{Server, transport::StdioTransport};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -95,4 +95,5 @@ match result {
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-Originally forked from [https://github.com/Derek-X-Wang/mcp-rust-sdk](mcp-rust-sdk)
+
+Originally forked from [https://github.com/Derek-X-Wang/mcp-rust-sdk](mcp-rust-sdk).
