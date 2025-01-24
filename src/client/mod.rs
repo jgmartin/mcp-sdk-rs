@@ -2,7 +2,7 @@ use crate::{
     error::{Error, ErrorCode},
     protocol::{Notification, Request, RequestId, Response},
     transport::{Message, Transport},
-    types::{ClientCapabilities, Implementation, ServerCapabilities, LoggingLevel, LoggingMessage},
+    types::{ClientCapabilities, Implementation, LoggingLevel, LoggingMessage, ServerCapabilities},
 };
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -149,13 +149,9 @@ impl ClientHandler for DefaultClientHandler {
                     let update_params: HashMap<String, Value> = serde_json::from_value(p)?;
                     if let Some(uri_val) = update_params.get("uri") {
                         let uri = uri_val.as_str().ok_or("some file").unwrap();
-                        log::debug!("Resource {uri} was updated");
+                        log::debug!("resource updated: {uri}");
                     }
                 }
-                Ok(())
-            }
-            "notifications/resources/list_changed" => {
-                log::debug!("received resources/listChanged");
                 Ok(())
             }
             _ => Err(Error::Other("unknown notification".to_string())),
@@ -204,22 +200,17 @@ impl Client {
         let response = self.request("initialize", Some(params)).await?;
         let mut caps = ServerCapabilities::default();
         if let Some(resp_obj) = response.as_object() {
+            if let Some(protocol_version) = resp_obj.get("protocolVersion") {
+                if let Some(v) = protocol_version.as_str() {
+                    if v != crate::LATEST_PROTOCOL_VERSION {
+                        log::error!("incorrect protocol version");
+                        self.shutdown().await?;
+                        return Err(Error::Other("incorrect protocol version".to_string()));
+                    }
+                }
+            }
             if let Some(server_caps) = resp_obj.get("capabilities") {
-                if let Some(exp) = server_caps.get("experimental") {
-                    caps.experimental = Some(exp.clone());
-                }
-                if let Some(logging) = server_caps.get("logging") {
-                    caps.logging = Some(logging.clone());
-                }
-                if let Some(prompts) = server_caps.get("prompts") {
-                    caps.prompts = Some(prompts.clone());
-                }
-                if let Some(resources) = server_caps.get("resources") {
-                    caps.resources = Some(resources.clone());
-                }
-                if let Some(tools) = server_caps.get("tools") {
-                    caps.tools = Some(tools.clone());
-                }
+                caps = serde_json::from_value(server_caps.clone())?;
             }
         }
         *self.server_capabilities.write().await = Some(caps.clone());
@@ -295,10 +286,14 @@ impl Client {
         let mut counter = self.request_counter.write().await;
         *counter += 1;
         let id = RequestId::Number(*counter);
-        let request = Request::new("logging/setLevel", Some(json!({"level": level})), id.clone());
-        self.sender.send(Message::Request(request)).map_err(|_| {
-            Error::Transport("failed to set logging level".to_string())
-        })?;
+        let request = Request::new(
+            "logging/setLevel",
+            Some(json!({"level": level})),
+            id.clone(),
+        );
+        self.sender
+            .send(Message::Request(request))
+            .map_err(|_| Error::Transport("failed to set logging level".to_string()))?;
         Ok(())
     }
 
