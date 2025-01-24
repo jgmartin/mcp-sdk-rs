@@ -1,7 +1,7 @@
-use mcp_rust_sdk::{
-    client::Client,
+use mcp_sdk_rs::{
+    client::{Client, Session},
     transport::websocket::WebSocketTransport,
-    types::{ClientCapabilities, Implementation},
+    types::Implementation,
 };
 use std::sync::Arc;
 
@@ -10,18 +10,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create WebSocket transport
     let transport = WebSocketTransport::new("ws://127.0.0.1:8780").await?;
 
+    // Create mpsc communication channels
+    let (request_tx, response_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (response_tx, request_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    // Create a session and start listening for requests and notifications
+    let session = Session::new(Arc::new(transport), response_tx, request_rx, None);
+    session.start().await?;
+
     // Create MCP client
-    let client = Client::new(Arc::new(transport));
+    let client = Client::new(request_tx, response_rx);
 
     // Initialize client
     let implementation = Implementation {
         name: "example-client".to_string(),
         version: env!("CARGO_PKG_VERSION").to_string(),
     };
-    let capabilities = ClientCapabilities::default();
 
     log::debug!("Initializing MCP client...");
-    let server_capabilities = client.initialize(implementation, capabilities).await?;
+    let server_capabilities = client.initialize(implementation, None).await?;
     log::debug!("Server capabilities: {:?}", server_capabilities);
 
     // Send a request

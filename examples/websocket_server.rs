@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio_tungstenite::accept_async;
 
-use mcp_rust_sdk::{
+use mcp_sdk_rs::{
     error::Error,
     server::{Server, ServerHandler},
     transport::websocket::WebSocketTransport,
