@@ -118,6 +118,7 @@ pub trait ClientHandler: Send + Sync {
 pub struct DefaultClientHandler;
 #[async_trait]
 impl ClientHandler for DefaultClientHandler {
+    /// Handle an incoming request
     async fn handle_request(&self, method: String, _params: Option<Value>) -> Result<Value, Error> {
         match method.as_str() {
             "sampling/createMessage" => {
@@ -128,6 +129,7 @@ impl ClientHandler for DefaultClientHandler {
         }
     }
 
+    /// Handle an incoming notification
     async fn handle_notification(
         &self,
         method: String,

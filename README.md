@@ -30,18 +30,33 @@ mcp_sdk_rs = "0.1.0"
 use mcp_sdk_rs::{Client, transport::WebSocketTransport};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a WebSocket transport
-    let transport = WebSocketTransport::new("ws://localhost:8080").await?;
+async fn main() -> Result<(), Error> {
+    // Create a transport
+    let transport = WebSocketTransport::new(self.url.as_str())
+        .await
+        .map_err(|_| Error::Internal)?;
 
-    // Create and connect the client
-    let client = Client::new(transport);
-    client.connect().await?;
+    //Create mpsc channels for communication between the client and session
+    let (request_tx, request_rx): (UnboundedSender<Message>, UnboundedReceiver<Message>) =
+        tokio::sync::mpsc::unbounded_channel();
+    let (response_tx, response_rx): (UnboundedSender<Message>, UnboundedReceiver<Message>) =
+        tokio::sync::mpsc::unbounded_channel();
 
-    // Make requests
-    let response = client.request("method_name", Some(params)).await?;
+    // Create and start the session
+    // Optionally pass an implementation of ClientHandler for custom handling of requests and notifications
+    let session = Session::new(Arc::new(transport), response_tx, request_rx, None);
+    session.start().await.map_err(|_| Error::Internal)?;
 
-    Ok(())
+    // Create the client and make requests, receive notifications etc
+    let client = Client::new(request_tx, response_rx);
+    let response = client.request(
+        "tools/call",
+        Some(json!({
+            "name": "methondName",
+            "arguments": json!({})
+        })),
+    )
+    .await?
 }
 ```
 
