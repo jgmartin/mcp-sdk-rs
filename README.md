@@ -82,7 +82,7 @@ The SDK supports multiple transport layers:
 The SDK provides comprehensive error handling through the `Error` type:
 
 ```rust
-use mcp_rust_sdk::Error;
+use mcp_sdk_rs::Error;
 
 match result {
     Ok(value) => println!("Success: {:?}", value),
