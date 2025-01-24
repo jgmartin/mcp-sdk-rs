@@ -163,6 +163,25 @@ pub enum LoggingLevel {
     Alert,
     Emergency,
 }
+impl From<LoggingLevel> for log::Level {
+    fn from(level: LoggingLevel) -> log::Level {
+        match level {
+            LoggingLevel::Debug => log::Level::Debug,
+            LoggingLevel::Info | LoggingLevel::Notice => log::Level::Info,
+            LoggingLevel::Warning => log::Level::Warn,
+            LoggingLevel::Error | LoggingLevel::Critical | LoggingLevel::Alert | LoggingLevel::Emergency => log::Level::Error,
+        }
+    }
+}
+
+/// A log message
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoggingMessage {
+    pub level: LoggingLevel,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logger: Option<String>,
+    pub data: Value,
+}
 
 /// A prompt argument
 #[derive(Debug, Clone, Serialize, Deserialize)]
