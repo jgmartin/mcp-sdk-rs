@@ -2,7 +2,7 @@ use crate::{
     error::{Error, ErrorCode},
     protocol::{Notification, Request, RequestId, Response},
     transport::{Message, Transport},
-    types::{ClientCapabilities, Implementation, ServerCapabilities},
+    types::{ClientCapabilities, Implementation, ServerCapabilities, LoggingLevel, LoggingMessage},
 };
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -136,6 +136,14 @@ impl ClientHandler for DefaultClientHandler {
         params: Option<Value>,
     ) -> Result<(), Error> {
         match method.as_str() {
+            "notifications/message" => {
+                // handle logging messages
+                if let Some(p) = params {
+                    let message: LoggingMessage = serde_json::from_value(p)?;
+                    log::log!(message.level.into(), "{}", message.data);
+                }
+                Ok(())
+            }
             "notifications/resources/updated" => {
                 if let Some(p) = params {
                     let update_params: HashMap<String, Value> = serde_json::from_value(p)?;
@@ -279,6 +287,17 @@ impl Client {
         let request = Request::new("resources/subscribe", Some(json!({"uri": uri})), id.clone());
         self.sender.send(Message::Request(request)).map_err(|_| {
             Error::Transport("failed to send subscribe request message".to_string())
+        })?;
+        Ok(())
+    }
+
+    pub async fn set_log_level(&self, level: LoggingLevel) -> Result<(), Error> {
+        let mut counter = self.request_counter.write().await;
+        *counter += 1;
+        let id = RequestId::Number(*counter);
+        let request = Request::new("logging/setLevel", Some(json!({"level": level})), id.clone());
+        self.sender.send(Message::Request(request)).map_err(|_| {
+            Error::Transport("failed to set logging level".to_string())
         })?;
         Ok(())
     }
