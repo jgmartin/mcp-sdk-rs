@@ -615,7 +615,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04cbf5b083de1c7e0222a7a51dbfdba1cbe1c6ab0b15e29fff3f6c077fd9cd9f"
 
 [[package]]
-name = "mcp_sdk_rs"
+name = "mcp-sdk-rs"
 version = "0.1.2"
 dependencies = [
  "async-stream",

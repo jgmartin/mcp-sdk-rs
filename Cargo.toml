@@ -1,5 +1,5 @@
 [package]
-name = "mcp_sdk_rs"
+name = "mcp-sdk-rs"
 version = "0.1.2"
 edition = "2021"
 description = "An SDK for building Model Context Protocol (MCP) clients and servers in Rust"
