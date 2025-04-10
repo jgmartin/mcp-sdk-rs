@@ -303,7 +303,8 @@ impl Client {
         method: &str,
         params: Option<serde_json::Value>,
     ) -> Result<(), Error> {
-        let notification = Notification::new(method, params);
+        let path = format!("notifications/{method}");
+        let notification = Notification::new(path, params);
         self.sender
             .send(Message::Notification(notification))
             .map_err(|_| Error::Transport("failed to send notification message".to_string()))
