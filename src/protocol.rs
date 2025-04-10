@@ -24,53 +24,95 @@ pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[LATEST_PROTOCOL_VERSION, "202
 pub const JSONRPC_VERSION: &str = "2.0";
 
 /// A unique identifier for a request
+///
+/// This enum represents the possible types of request identifiers in the MCP protocol.
+/// It can be either a string or a number, as per JSON-RPC 2.0 specification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum RequestId {
+    /// String representation of the request ID
     String(String),
+    /// Numeric representation of the request ID
     Number(i64),
 }
 
 /// Base JSON-RPC request structure
+///
+/// This struct represents a JSON-RPC request in the MCP protocol.
+/// It includes the JSON-RPC version, method name, optional parameters, and a unique identifier.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// Name of the method to be invoked
     pub method: String,
+    /// Optional parameters for the method
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
+    /// Unique identifier for the request
     pub id: RequestId,
 }
 
 /// Base JSON-RPC notification structure
+///
+/// This struct represents a JSON-RPC notification in the MCP protocol.
+/// It is similar to a request but does not include an id field, as it does not expect a response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notification {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// Name of the method to be invoked
     pub method: String,
+    /// Optional parameters for the method
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
 }
 
 /// Base JSON-RPC response structure
+///
+/// This struct represents a JSON-RPC response in the MCP protocol.
+/// It includes the JSON-RPC version, the id of the request it's responding to,
+/// and either a result or an error field.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Response {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// ID of the request this response corresponds to
     pub id: RequestId,
+    /// The result of a successful request (null if there was an error)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
+    /// The error object if the request failed (null if the request was successful)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<ResponseError>,
 }
 
 /// JSON-RPC error object
+///
+/// This struct represents an error that occurred during the processing of a JSON-RPC request.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseError {
+    /// The error code
     pub code: i32,
+    /// A short description of the error
     pub message: String,
+    /// Additional information about the error
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
 
 impl Request {
+    /// Creates a new Request instance
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - The name of the method to be invoked
+    /// * `params` - Optional parameters for the method
+    /// * `id` - Unique identifier for the request
+    ///
+    /// # Returns
+    ///
+    /// A new Request instance
     pub fn new(method: impl Into<String>, params: Option<Value>, id: RequestId) -> Self {
         Self {
             jsonrpc: crate::JSONRPC_VERSION.to_string(),
@@ -82,6 +124,16 @@ impl Request {
 }
 
 impl Notification {
+    /// Creates a new Notification instance
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - The name of the method to be invoked
+    /// * `params` - Optional parameters for the method
+    ///
+    /// # Returns
+    ///
+    /// A new Notification instance
     pub fn new(method: impl Into<String>, params: Option<Value>) -> Self {
         Self {
             jsonrpc: crate::JSONRPC_VERSION.to_string(),
@@ -92,6 +144,16 @@ impl Notification {
 }
 
 impl Response {
+    /// Creates a new successful Response instance
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The id of the request this response corresponds to
+    /// * `result` - The result of the successful request
+    ///
+    /// # Returns
+    ///
+    /// A new Response instance representing a successful result
     pub fn success(id: RequestId, result: Option<Value>) -> Self {
         Self {
             jsonrpc: crate::JSONRPC_VERSION.to_string(),
@@ -101,6 +163,16 @@ impl Response {
         }
     }
 
+    /// Creates a new error Response instance
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The id of the request this response corresponds to
+    /// * `error` - The error that occurred during request processing
+    ///
+    /// # Returns
+    ///
+    /// A new Response instance representing an error
     pub fn error(id: RequestId, error: ResponseError) -> Self {
         Self {
             jsonrpc: crate::JSONRPC_VERSION.to_string(),
@@ -148,6 +220,9 @@ impl From<Error> for ResponseError {
 }
 
 impl fmt::Display for RequestId {
+    /// Provides a string representation of the RequestId
+    ///
+    /// This implementation allows RequestId to be easily printed or converted to a string.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RequestId::String(s) => write!(f, "{}", s),
