@@ -203,9 +203,11 @@ impl Client {
             if let Some(protocol_version) = resp_obj.get("protocolVersion") {
                 if let Some(v) = protocol_version.as_str() {
                     if v != crate::LATEST_PROTOCOL_VERSION {
-                        log::error!("incorrect protocol version");
-                        self.shutdown().await?;
-                        return Err(Error::Other("incorrect protocol version".to_string()));
+                        log::warn!(
+                            "mcp server does not support the latest protocol version {}",
+                            crate::LATEST_PROTOCOL_VERSION
+                        );
+                        log::warn!("latest supported protocol version is {v}");
                     }
                 }
             }
