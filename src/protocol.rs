@@ -8,14 +8,15 @@ use crate::error::{Error, ErrorCode};
 ///
 /// This version represents the most recent protocol specification that this SDK supports.
 /// It is used during client-server handshake to ensure compatibility.
-pub const LATEST_PROTOCOL_VERSION: &str = "2024-11-05";
+pub const LATEST_PROTOCOL_VERSION: &str = "2025-03-26";
 
 /// List of all protocol versions supported by this SDK
 ///
 /// This list is used during version negotiation to determine compatibility between
 /// client and server. The versions are listed in order of preference, with the
 /// most recent version first.
-pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] = &[LATEST_PROTOCOL_VERSION, "2024-10-07"];
+pub const SUPPORTED_PROTOCOL_VERSIONS: &[&str] =
+    &[LATEST_PROTOCOL_VERSION, "2024-11-05", "2024-10-07"];
 
 /// JSON-RPC version used by the MCP protocol
 ///
