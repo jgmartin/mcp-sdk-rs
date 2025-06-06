@@ -237,7 +237,7 @@ pub struct Tool {
     pub name: String,
     pub description: String,
     #[serde(rename = "camelCase", skip_serializing_if = "Option::is_none")]
-    pub schema: Option<ToolSchema>,
+    pub input_schema: Option<ToolSchema>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub annotations: Option<ToolAnnotations>,
 }
