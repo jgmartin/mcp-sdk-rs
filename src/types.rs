@@ -169,7 +169,10 @@ impl From<LoggingLevel> for log::Level {
             LoggingLevel::Debug => log::Level::Debug,
             LoggingLevel::Info | LoggingLevel::Notice => log::Level::Info,
             LoggingLevel::Warning => log::Level::Warn,
-            LoggingLevel::Error | LoggingLevel::Critical | LoggingLevel::Alert | LoggingLevel::Emergency => log::Level::Error,
+            LoggingLevel::Error
+            | LoggingLevel::Critical
+            | LoggingLevel::Alert
+            | LoggingLevel::Emergency => log::Level::Error,
         }
     }
 }
@@ -214,6 +217,11 @@ pub enum MessageContent {
         #[serde(rename = "mimeType")]
         mime_type: Option<String>,
     },
+    Audio {
+        data: String,
+        #[serde(rename = "mimeType")]
+        mime_type: Option<String>,
+    },
 }
 
 /// A prompt message
@@ -228,8 +236,35 @@ pub struct PromptMessage {
 pub struct Tool {
     pub name: String,
     pub description: String,
-    #[serde(rename = "inputSchema")]
-    pub schema: Value,
+    #[serde(rename = "camelCase", skip_serializing_if = "Option::is_none")]
+    pub schema: Option<ToolSchema>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub annotations: Option<ToolAnnotations>,
+}
+
+/// A tool's schema, defining the expected input parameters for the tool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolSchema {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required: Option<Vec<String>>,
+}
+
+/// A tool's schema, defining the expected input parameters for the tool
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolAnnotations {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub read_only_hint: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destructive_hint: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub idempotent_hint: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub open_world_hint: Option<bool>,
 }
 
 /// Root definition
