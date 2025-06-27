@@ -45,10 +45,13 @@
 pub mod client;
 /// Error types and handling for the SDK
 pub mod error;
+/// Process management for local MCP servers
+pub mod process;
 /// Protocol-specific types and implementations
 pub mod protocol;
 /// Server module provides the MCP server implementation
 pub mod server;
+pub mod session;
 /// Transport layer implementations (WebSocket, stdio)
 pub mod transport;
 /// Common types used throughout the SDK

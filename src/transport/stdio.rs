@@ -11,129 +11,47 @@
 
 use async_trait::async_trait;
 use futures::Stream;
-use std::{
-    io::Write,
-    pin::Pin,
-    sync::{Arc, Mutex},
-};
-use tokio::{
-    io::{AsyncBufReadExt, BufReader as TokioBufReader},
-    sync::broadcast,
+use std::{pin::Pin, sync::Arc};
+use tokio::sync::{
+    mpsc::{Receiver, Sender},
+    Mutex,
 };
 
 use crate::{
-    error::{Error, ErrorCode},
+    error::Error,
     transport::{Message, Transport},
 };
 
-/// A transport implementation that uses standard input/output for communication.
-///
-/// This transport is suitable for scenarios where the client and server communicate
-/// through stdin/stdout, such as command-line applications or local development.
-///
-/// # Thread Safety
-///
-/// The implementation is thread-safe, using Arc and Mutex to protect shared access
-/// to stdin/stdout. This allows the transport to be used safely across multiple
-/// threads in an async context.
-///
-/// # Message Flow
-///
-/// - Input: Messages are read line by line from stdin, parsed as JSON-RPC messages
-/// - Output: Messages are serialized to JSON and written to stdout
-///
-/// # Example
-///
-/// ```rust
-/// use mcp_sdk_rs::transport::stdio::StdioTransport;
-///
-/// #[tokio::main]
-/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let transport = StdioTransport::new();
-///     Ok(())
-/// }
-/// ```
 pub struct StdioTransport {
-    /// Thread-safe handle to output
-    stdout: Arc<Mutex<std::io::Stdout>>,
-    /// Receiver for messages read from stdin
-    receiver: broadcast::Receiver<Result<Message, Error>>,
+    read_connection: Arc<Mutex<Receiver<String>>>,
+    write_connection: Sender<String>,
 }
 
 impl StdioTransport {
-    /// Creates a new stdio transport instance using actual stdin/stdout.
-    pub fn new() -> (Self, broadcast::Sender<Result<Message, Error>>) {
-        let (sender, receiver) = broadcast::channel(100);
+    /// Creates a new stdio transport instance using a child's stdin/stdout.
+    pub fn new(read: Receiver<String>, write: Sender<String>) -> Self {
         let transport = Self {
-            stdout: Arc::new(Mutex::new(std::io::stdout())),
-            receiver,
+            read_connection: Arc::new(Mutex::new(read)),
+            write_connection: write,
         };
-
-        // Start reading from stdin in a separate task
-        let stdin = tokio::io::stdin();
-        let mut reader = TokioBufReader::new(stdin);
-        let sender_clone = sender.clone();
-        tokio::spawn(async move {
-            let mut line = String::new();
-            loop {
-                line.clear();
-                match reader.read_line(&mut line).await {
-                    Ok(0) => break, // EOF
-                    Ok(_) => {
-                        let message = match serde_json::from_str(&line) {
-                            Ok(message) => Ok(message),
-                            Err(err) => Err(Error::Serialization(err.to_string())),
-                        };
-
-                        if sender_clone.send(message).is_err() {
-                            break;
-                        }
-                    }
-                    Err(err) => {
-                        let _ = sender_clone.send(Err(Error::Io(err.to_string())));
-                        break;
-                    }
-                }
-            }
-        });
-
-        (transport, sender)
+        transport
     }
 }
 
 #[async_trait]
 impl Transport for StdioTransport {
-    /// Sends a message by writing it to stdout.
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - The message to send
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if the message was successfully written to stdout,
-    /// or an error if the write failed or stdout was locked.
-    ///
-    /// # Errors
-    ///
-    /// This function will return an error if:
-    /// - Failed to acquire the stdout lock
-    /// - Failed to serialize the message to JSON
-    /// - Failed to write to stdout
-    /// - Failed to flush stdout
+    /// Sends a message by writing it to the child process' stdin
     async fn send(&self, message: Message) -> Result<(), Error> {
-        let mut stdout = self.stdout.lock().map_err(|_e| {
-            Error::protocol(ErrorCode::InternalError, "Failed to acquire stdout lock")
-        })?;
-
         let json = serde_json::to_string(&message)?;
-        writeln!(stdout, "{}", json).map_err(|e| Error::Io(e.to_string()))?;
-        stdout.flush().map_err(|e| Error::Io(e.to_string()))?;
-
+        let _ =
+            self.write_connection.send(json).await.map_err(|_| {
+                Error::Transport("failed to send message to child process".to_string())
+            })?;
+        // let _ = stdin.send("\n".to_string()).await.map_err(|_| Error::Transport("failed to send message"))?;
         Ok(())
     }
 
-    /// Creates a stream of messages received from stdin.
+    /// Creates a stream of messages received from the child process' stdout
     ///
     /// # Returns
     ///
@@ -146,13 +64,22 @@ impl Transport for StdioTransport {
     /// 2. Each message is sent through the broadcast channel
     /// 3. This stream receives messages from the broadcast channel
     fn receive(&self) -> Pin<Box<dyn Stream<Item = Result<Message, Error>> + Send>> {
-        let rx = self.receiver.resubscribe();
-        Box::pin(futures::stream::unfold(rx, |mut rx| async move {
-            match rx.recv().await {
-                Ok(msg) => Some((msg, rx)),
-                Err(_) => None,
-            }
-        }))
+        let read_connection = self.read_connection.clone();
+        Box::pin(futures::stream::unfold(
+            read_connection,
+            async move |read_connection| {
+                let mut guard = read_connection.lock().await;
+                loop {
+                    match guard.recv().await {
+                        Some(s) => {
+                            let message: Message = serde_json::from_str(s.as_str()).unwrap();
+                            return Some((Ok(message), read_connection.clone()));
+                        }
+                        None => return None,
+                    }
+                }
+            },
+        ))
     }
 
     /// Closes the transport.
