@@ -1,97 +1,16 @@
 use crate::{
     error::{Error, ErrorCode},
-    protocol::{Notification, Request, RequestId, Response},
-    transport::{Message, Transport},
+    protocol::{Notification, Request, RequestId},
+    transport::Message,
     types::{ClientCapabilities, Implementation, LoggingLevel, LoggingMessage, ServerCapabilities},
 };
 use async_trait::async_trait;
-use futures::StreamExt;
 use serde_json::{json, Value};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex, RwLock,
 };
-
-#[derive(Clone)]
-pub struct Session {
-    handler: Option<Arc<dyn ClientHandler>>,
-    transport: Arc<dyn Transport>,
-    receiver: Arc<Mutex<UnboundedReceiver<Message>>>,
-    sender: Arc<UnboundedSender<Message>>,
-}
-impl Session {
-    /// Create a new session
-    pub fn new(
-        transport: Arc<dyn Transport>,
-        sender: UnboundedSender<Message>,
-        receiver: UnboundedReceiver<Message>,
-        handler: Option<Arc<dyn ClientHandler>>,
-    ) -> Self {
-        Self {
-            handler,
-            transport,
-            sender: Arc::new(sender),
-            receiver: Arc::new(Mutex::new(receiver)),
-        }
-    }
-
-    /// Start the session and listen for messages
-    pub async fn start(self) -> Result<(), Error> {
-        let transport = self.transport.clone();
-        let handler = self.handler.unwrap_or(Arc::new(DefaultClientHandler));
-        // listen for messages from the server
-        tokio::spawn(async move {
-            let mut stream = transport.receive();
-            while let Some(result) = stream.next().await {
-                match result {
-                    Ok(message) => match &message {
-                        Message::Request(r) => {
-                            let res = handler
-                                .handle_request(r.method.clone(), r.params.clone())
-                                .await;
-                            if transport
-                                .send(Message::Response(Response::success(
-                                    r.id.clone(),
-                                    Some(res.unwrap()),
-                                )))
-                                .await
-                                .is_err()
-                            {
-                                break;
-                            }
-                        }
-                        Message::Response(_) => {
-                            if self.sender.send(message).is_err() {
-                                break;
-                            }
-                        }
-                        Message::Notification(n) => {
-                            if handler
-                                .handle_notification(n.method.clone(), n.params.clone())
-                                .await
-                                .is_err()
-                            {
-                                break;
-                            }
-                        }
-                    },
-                    Err(_) => break,
-                }
-            }
-        });
-        // listen for requests from the client
-        let rx_clone = self.receiver.clone();
-        let tx_clone = self.transport.clone();
-        tokio::spawn(async move {
-            let mut stream = rx_clone.lock().await;
-            while let Some(message) = stream.recv().await {
-                tx_clone.send(message).await.unwrap();
-            }
-        });
-        Ok(())
-    }
-}
 
 /// Trait for implementing MCP client handlers
 #[async_trait]
@@ -235,12 +154,14 @@ impl Client {
         let id = RequestId::Number(*counter);
 
         let request = Request::new(method, params, id.clone());
+        log::info!("sent request: {:#?}", request);
         self.sender
             .send(Message::Request(request))
             .map_err(|_| Error::Transport("failed to send request message".to_string()))?;
         // Wait for matching response
         let mut receiver = self.receiver.lock().await;
         while let Some(message) = receiver.recv().await {
+            log::info!("got message: {:#?}", message);
             if let Message::Response(response) = message {
                 if response.id == id {
                     if let Some(error) = response.error {
