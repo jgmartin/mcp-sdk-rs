@@ -29,7 +29,7 @@ impl ProcessManager {
     }
 
     fn spawn_process(&mut self, mut command: Command) -> Result<Child, Box<dyn Error>> {
-        log::debug!("Spawning process: {:?}", command);
+        log::debug!("spawning process: {:?}", command);
 
         let child = command
             .stdin(std::process::Stdio::piped())
@@ -46,9 +46,9 @@ impl ProcessManager {
         process_rx: mpsc::Receiver<String>,
         output_tx: mpsc::Sender<String>,
     ) -> Result<(), Box<dyn Error>> {
-        let stdin = child.stdin.take().expect("Failed to get child stdin");
-        let stdout = child.stdout.take().expect("Failed to get child stdout");
-        let stderr = child.stderr.take().expect("Failed to get child stderr");
+        let stdin = child.stdin.take().expect("failed to get child stdin");
+        let stdout = child.stdout.take().expect("failed to get child stdout");
+        let stderr = child.stderr.take().expect("failed to get child stderr");
 
         self.child = Some(child);
 
@@ -61,14 +61,14 @@ impl ProcessManager {
 
     pub async fn shutdown(&mut self) {
         if let Some(mut child) = self.child.take() {
-            log::debug!("Stopping child process...");
+            log::debug!("stopping child process...");
             if let Err(e) = child.kill().await {
-                log::error!("Failed to stop child process: {}", e);
+                log::error!("failed to stop child process: {}", e);
             }
             if let Err(e) = child.wait().await {
-                log::error!("Error waiting for child process to exit: {}", e);
+                log::error!("error waiting for child process to exit: {}", e);
             }
-            log::debug!("Child process stopped");
+            log::debug!("child process stopped");
         }
     }
 }
