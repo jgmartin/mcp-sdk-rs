@@ -12,15 +12,9 @@
 use async_trait::async_trait;
 use futures::Stream;
 use std::{pin::Pin, sync::Arc};
-use tokio::{
-    io::{
-        AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt,
-        BufReader as TokioBufReader, BufWriter,
-    },
-    sync::{
-        mpsc::{Receiver, Sender},
-        Mutex,
-    },
+use tokio::sync::{
+    mpsc::{Receiver, Sender},
+    Mutex,
 };
 
 use crate::{
@@ -49,7 +43,6 @@ impl Transport for StdioTransport {
     /// Sends a message by writing it to the child process' stdin
     async fn send(&self, message: Message) -> Result<(), Error> {
         let json = serde_json::to_string(&message)?;
-        log::info!("sending json!: {json}");
         let _ =
             self.write_connection.send(json).await.map_err(|_| {
                 Error::Transport("failed to send message to child process".to_string())
@@ -79,9 +72,7 @@ impl Transport for StdioTransport {
                 loop {
                     match guard.recv().await {
                         Some(s) => {
-                            log::info!("received data: {s}");
                             let message: Message = serde_json::from_str(s.as_str()).unwrap();
-                            log::info!("GOT MESSAGE: {:#?}", message);
                             return Some((Ok(message), read_connection.clone()));
                         }
                         None => return None,

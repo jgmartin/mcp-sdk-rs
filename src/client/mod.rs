@@ -152,16 +152,13 @@ impl Client {
         let mut counter = self.request_counter.write().await;
         *counter += 1;
         let id = RequestId::Number(*counter);
-
         let request = Request::new(method, params, id.clone());
-        log::info!("sent request: {:#?}", request);
         self.sender
             .send(Message::Request(request))
             .map_err(|_| Error::Transport("failed to send request message".to_string()))?;
         // Wait for matching response
         let mut receiver = self.receiver.lock().await;
         while let Some(message) = receiver.recv().await {
-            log::info!("got message: {:#?}", message);
             if let Message::Response(response) = message {
                 if response.id == id {
                     if let Some(error) = response.error {

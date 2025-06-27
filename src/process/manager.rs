@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error};
+use std::error::Error;
 use tokio::process::{Child, Command};
 use tokio::sync::mpsc;
 
@@ -18,9 +18,6 @@ impl ProcessManager {
     pub async fn start_process(
         &mut self,
         command: Command,
-        // program: &str,
-        // args: &[String],
-        // env_vars: &HashMap<String, String>,
         output_tx: mpsc::Sender<String>,
     ) -> Result<mpsc::Sender<String>, Box<dyn Error>> {
         let child = self.spawn_process(command)?;
@@ -31,13 +28,7 @@ impl ProcessManager {
         Ok(process_tx)
     }
 
-    fn spawn_process(
-        &mut self,
-        mut command: Command,
-        // program: &str,
-        // args: &[String],
-        // env_vars: &HashMap<String, String>,
-    ) -> Result<Child, Box<dyn Error>> {
+    fn spawn_process(&mut self, mut command: Command) -> Result<Child, Box<dyn Error>> {
         log::debug!("Spawning process: {:?}", command);
 
         let child = command

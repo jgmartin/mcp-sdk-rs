@@ -36,9 +36,7 @@ impl Session {
             Session::Local {
                 handler,
                 command,
-                // receive requests
                 receiver,
-                // send back responses
                 sender,
             } => {
                 // spawn the child process
@@ -56,9 +54,7 @@ impl Session {
                 // listen for messages from the server
                 tokio::spawn(async move {
                     let mut stream = t.receive();
-                    log::info!("listening for messages from the server");
                     while let Some(result) = stream.next().await {
-                        log::info!("got message: {:#?}", result);
                         match result {
                             Ok(message) => match &message {
                                 Message::Request(r) => {
@@ -100,7 +96,6 @@ impl Session {
                 tokio::spawn(async move {
                     let mut stream = rx_clone.lock().await;
                     while let Some(message) = stream.recv().await {
-                        log::info!("sending message to server: {:#?}", message);
                         tx_clone.send(message).await.unwrap();
                     }
                 });
