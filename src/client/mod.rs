@@ -84,7 +84,7 @@ impl ClientHandler for DefaultClientHandler {
 }
 
 /// MCP client state
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Client {
     server_capabilities: Arc<RwLock<Option<ServerCapabilities>>>,
     request_counter: Arc<RwLock<i64>>,
