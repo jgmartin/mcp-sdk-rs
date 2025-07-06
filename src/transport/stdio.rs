@@ -47,7 +47,6 @@ impl Transport for StdioTransport {
             self.write_connection.send(json).await.map_err(|_| {
                 Error::Transport("failed to send message to child process".to_string())
             })?;
-        // let _ = stdin.send("\n".to_string()).await.map_err(|_| Error::Transport("failed to send message"))?;
         Ok(())
     }
 

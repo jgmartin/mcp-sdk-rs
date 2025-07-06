@@ -217,6 +217,7 @@ pub enum MessageContent {
         #[serde(rename = "mimeType")]
         mime_type: Option<String>,
     },
+    #[serde(rename = "audio")]
     Audio {
         data: String,
         #[serde(rename = "mimeType")]
@@ -249,6 +250,14 @@ pub struct ToolSchema {
     pub properties: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<Vec<String>>,
+}
+
+/// A tool's output
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolResult {
+    pub content: Vec<MessageContent>,
+    #[serde(rename = "structuredContent", skip_serializing_if = "Option::is_none")]
+    pub structured_content: Option<Value>,
 }
 
 /// A tool's schema, defining the expected input parameters for the tool
