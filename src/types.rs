@@ -224,12 +224,14 @@ pub enum MessageContent {
         mime_type: Option<String>,
     },
     #[serde(rename = "resource")]
-    Resource {
-        uri: String,
-        #[serde(alias = "mimeType")]
-        mime_type: String,
-        text: String,
-    },
+    Resource { resource: ResourceContent },
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceContent {
+    pub uri: String,
+    #[serde(alias = "mimeType")]
+    pub mime_type: String,
+    pub text: String,
 }
 
 /// A prompt message
