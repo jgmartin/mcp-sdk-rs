@@ -223,6 +223,13 @@ pub enum MessageContent {
         #[serde(rename = "mimeType")]
         mime_type: Option<String>,
     },
+    #[serde(rename = "resource")]
+    Resource {
+        uri: String,
+        #[serde(alias = "mimeType")]
+        mime_type: String,
+        text: String,
+    },
 }
 
 /// A prompt message
