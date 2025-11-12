@@ -14,7 +14,6 @@ use tokio::{
     },
 };
 
-// #[derive(Clone)]
 pub enum Session {
     Local {
         handler: Option<Arc<dyn ClientHandler>>,
@@ -39,17 +38,24 @@ impl Session {
                 receiver,
                 sender,
             } => {
-                // spawn the child process
-                let mut pm = crate::process::ProcessManager::new();
+                // spawn the child process - wrap ProcessManager to ensure cleanup
+                let pm = Arc::new(tokio::sync::Mutex::new(crate::process::ProcessManager::new()));
                 let (output_tx, output_rx) = tokio::sync::mpsc::channel(100);
-                let process_tx = pm
-                    .start_process(command, output_tx.clone())
-                    .await
-                    .expect("a spawned subprocess");
+                let process_tx = {
+                    let mut manager = pm.lock().await;
+                    manager
+                        .start_process(command, output_tx.clone())
+                        .await
+                        .expect("a spawned subprocess")
+                };
 
                 let transport = Arc::new(StdioTransport::new(output_rx, process_tx));
                 let handler = handler.unwrap_or(Arc::new(DefaultClientHandler));
                 let t = transport.clone();
+                
+                // Clone ProcessManager for cleanup tasks
+                let pm_for_receiver_task = pm.clone();
+                let pm_for_sender_task = pm.clone();
 
                 // listen for messages from the server
                 tokio::spawn(async move {
@@ -89,6 +95,9 @@ impl Session {
                             Err(_) => break,
                         }
                     }
+                    // Clean up the process when the receiver stream ends
+                    let mut manager = pm_for_receiver_task.lock().await;
+                    manager.shutdown().await;
                 });
                 // listen for messages to send to the server
                 let rx_clone = receiver.clone();
@@ -96,9 +105,15 @@ impl Session {
                 tokio::spawn(async move {
                     let mut stream = rx_clone.lock().await;
                     while let Some(message) = stream.recv().await {
-                        tx_clone.send(message).await.unwrap();
+                        if tx_clone.send(message).await.is_err() {
+                            break;
+                        }
                     }
+                    // Clean up the process when the sender stream ends
+                    let mut manager = pm_for_sender_task.lock().await;
+                    manager.shutdown().await;
                 });
+                
                 Ok(())
             }
             Session::Remote {
@@ -154,7 +169,9 @@ impl Session {
                 tokio::spawn(async move {
                     let mut stream = rx_clone.lock().await;
                     while let Some(message) = stream.recv().await {
-                        tx_clone.send(message).await.unwrap();
+                        if tx_clone.send(message).await.is_err() {
+                            break;
+                        }
                     }
                 });
                 Ok(())
