@@ -1,3 +1,3 @@
 mod io;
 mod manager;
-pub use manager::ProcessManager;
+pub use manager::{ProcessManager, ProcessError};
