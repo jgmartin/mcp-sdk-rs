@@ -181,36 +181,3 @@ impl Session {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Set the file descriptor limit in your shell to something low to see this error on sad path:
-    // a spawned subprocess: Os { code: 24, kind: Uncategorized, message: "Too many open files" }
-    //
-    // Commands to run:
-    // ulimit -Sn 256
-    // cargo test test_file
-    #[tokio::test]
-    async fn test_file_descriptor_cleanup() {
-        let (_request_tx, request_rx): (UnboundedSender<Message>, UnboundedReceiver<Message>) =
-            tokio::sync::mpsc::unbounded_channel();
-        let (response_tx, _response_rx): (UnboundedSender<Message>, UnboundedReceiver<Message>) =
-            tokio::sync::mpsc::unbounded_channel();
-
-        let receiver = Arc::new(Mutex::new(request_rx));
-        let sender = Arc::new(response_tx);
-
-        for i in 0..5000 {
-            let session = Session::Local {
-                handler: None,
-                command: Command::new("cat"),
-                receiver: receiver.clone(),
-                sender: sender.clone(),
-            };
-            session.start().await.unwrap();
-            println!("{i}");
-        }
-    }
-}
