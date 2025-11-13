@@ -39,7 +39,9 @@ impl Session {
                 sender,
             } => {
                 // spawn the child process - wrap ProcessManager to ensure cleanup
-                let pm = Arc::new(tokio::sync::Mutex::new(crate::process::ProcessManager::new()));
+                let pm = Arc::new(tokio::sync::Mutex::new(
+                    crate::process::ProcessManager::new(),
+                ));
                 let (output_tx, output_rx) = tokio::sync::mpsc::channel(100);
                 let process_tx = {
                     let mut manager = pm.lock().await;
@@ -52,7 +54,7 @@ impl Session {
                 let transport = Arc::new(StdioTransport::new(output_rx, process_tx));
                 let handler = handler.unwrap_or(Arc::new(DefaultClientHandler));
                 let t = transport.clone();
-                
+
                 // Clone ProcessManager for cleanup tasks
                 let pm_for_receiver_task = pm.clone();
                 let pm_for_sender_task = pm.clone();
@@ -113,7 +115,7 @@ impl Session {
                     let mut manager = pm_for_sender_task.lock().await;
                     manager.shutdown().await;
                 });
-                
+
                 Ok(())
             }
             Session::Remote {
@@ -205,10 +207,9 @@ mod tests {
                 handler: None,
                 command: Command::new("cat"),
                 receiver: receiver.clone(),
-                sender: sender.clone()
+                sender: sender.clone(),
             };
             session.start().await.unwrap();
-
             println!("{i}");
         }
     }
